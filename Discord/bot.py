@@ -5,6 +5,7 @@ import threading
 import asyncio
 import random
 from flask import Flask, request, jsonify
+import configparser
 
 # Initialize the bot
 intents = nextcord.Intents.all()
@@ -13,7 +14,9 @@ bot = commands.Bot(command_prefix="*", intents=intents)
 # Initialize Flask app
 app = Flask(__name__)
 
-# Flask route to handle incoming news
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 @app.route('/send_news', methods=['POST'])
 async def receive_news():
     data = request.get_json()
@@ -22,36 +25,40 @@ async def receive_news():
     death_cause = data.get('death_cause')
     death_location = data.get('death_location')
 
-    intro_phrases = [
-        f"Breaking news! <@{discord_id}> met an unfortunate end.",
-        f"Tragedy strikes! Our dear <@{discord_id}> has fallen.",
-        f"Sad news from the battlefield: <@{discord_id}> has perished.",
-    ]
+    cause_phrases = eval(config.get("phrases", "cause_phrases"))
+    intro_phrases = eval(config.get("phrases", "intro_phrases"))
+    location_phrases = eval(config.get("phrases", "location_phrases"))
 
-    cause_phrases = [
-        f"The cause? {death_cause} claimed their life.",
-        f"A fatal {death_cause} was to blame.",
-        f"They couldn’t survive the {death_cause}.",
-    ]
+    cause_phrases_list = cause_phrases.get(death_cause, [])
 
-    location_phrases = [
-        f"This happened near {death_location}.",
-        f"At the scene: {death_location}.",
-        f"Location of death: {death_location}.",
-    ]
+    if not cause_phrases_list:
+        cause_phrases_list = [f"Sadly, the cause of death for <@{discord_id}> remains unknown."]
 
-    news_content = f"{random.choice(intro_phrases)} {random.choice(cause_phrases)} {random.choice(location_phrases)}"
+    cause_phrase = random.choice(cause_phrases_list)
 
-    # Call sendNews asynchronously from Flask
-    if bot:
-        asyncio.run_coroutine_threadsafe(
-            bot.get_cog("NewsHandler").sendNews(news_content),
-            bot.loop
-        )
+    news_content = f"{random.choice(intro_phrases).format(discord_id=discord_id)} {cause_phrase.format(death_cause=[death_cause])} {random.choice(location_phrases).format(death_location=death_location)}"
+
+    asyncio.run_coroutine_threadsafe(
+        bot.get_cog("NewsHandler").sendNews(news_content),
+        bot.loop
+    )
 
     return jsonify({"status": "success"}), 200
 
-# Function to run Flask in a separate thread
+
+@app.route('/update_status', methods=['POST'])
+async def update_status():
+    data = request.get_json()
+
+    status = data.get('status')
+
+    asyncio.run_coroutine_threadsafe(
+        bot.get_cog("NewsHandler").updateStatus(status),
+        bot.loop
+    )
+
+    return jsonify({"status": "success"}), 200
+
 def run_flask():
     app.run(port=5000, use_reloader=False)
 

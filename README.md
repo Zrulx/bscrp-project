@@ -1,5 +1,5 @@
 # bscrp-project
 
-Project made for BSCRP
+Project made for my BSCRP dev application
 
 discord.gg/bscrp
