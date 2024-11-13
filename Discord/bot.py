@@ -7,11 +7,9 @@ import random
 from flask import Flask, request, jsonify
 import configparser
 
-# Initialize the bot
 intents = nextcord.Intents.all()
 bot = commands.Bot(command_prefix="*", intents=intents)
 
-# Initialize Flask app
 app = Flask(__name__)
 
 config = configparser.ConfigParser()
@@ -62,7 +60,6 @@ async def update_status():
 def run_flask():
     app.run(port=5000, use_reloader=False)
 
-# Load bot extensions
 loaded_count = 0
 total_count = 0
 
@@ -76,15 +73,12 @@ for filename in os.listdir('./modules'):
         except Exception as e:
             print(f'Failed to load extension {extension}: {e}')
 
-# Bot on_ready event
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} | Loaded {loaded_count}/{total_count} Modules")
 
-# Main entry point for running both Flask and the bot
 if __name__ == "__main__":
-    # Start Flask in a separate thread
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
 
-    bot.run("Token")
+    bot.run(config.get('general', 'token'))
